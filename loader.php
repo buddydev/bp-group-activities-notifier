@@ -1,6 +1,6 @@
 <?php
 //we need a dummy component for manipulating notifications
-class BP_Local_Group_Notifier extends BP_Component{
+class BPLocalGroupNotifier extends BP_Component{
     
     function __construct() {
         global $bp;
@@ -22,14 +22,14 @@ class BP_Local_Group_Notifier extends BP_Component{
 
 		
 
-
+        $helper=BPLocalGroupNotifierHelper::get_instance();
 		// All globals for messaging component.
 		// Note that global_tables is included in this array.
 		$globals = array(
 			'slug'                  => $this->id,
 			'root_slug'             => false,
 			'has_directory'         => false,
-			'notification_callback' => 'bp_local_group_notifier_format_notifications',
+			'notification_callback' => 'bp_local_group_notifier_format_notifications' ,//Bp cuirrently does not support object method callbacks her
 			'global_tables'         => false
 		);
 
@@ -48,7 +48,7 @@ class BP_Local_Group_Notifier extends BP_Component{
  function bp_setup_local_group_notifier() {
 	global $bp;
 
-	$bp->localgroupnotifier = new BP_Local_Group_Notifier();
+	$bp->localgroupnotifier = new BPLocalGroupNotifier();
 }
 add_action( 'bp_loaded', 'bp_setup_local_group_notifier' );
     
