@@ -29,6 +29,8 @@ class BPLocalGroupNotifierHelper{
         add_action('bp_activity_screen_single_activity_permalink', array($this,'delete_on_single_activity'),10,2);
         //sniff and delete notification for forum topic/replies
         add_action('bp_init',array($this,'delete_for_group_forums'),20);
+         //load text domain
+        add_action ( 'bp_loaded', array(&$this,'load_textdomain'), 2 );
 
     }
     
@@ -136,7 +138,7 @@ class BPLocalGroupNotifierHelper{
                 //Identify the topic
                 // Get topic data
 				$topic_slug = bp_action_variable( 1 );
-                $post_status = array( bbp_get_closed_status_id(), bbp_get_public_status_id() );
+                                  $post_status = array( bbp_get_closed_status_id(), bbp_get_public_status_id() );
 				$topic_args = array( 'name' => $topic_slug, 'post_type' => bbp_get_topic_post_type(), 'post_status' => $post_status );
 				$topics     = get_posts( $topic_args );
 
@@ -297,6 +299,26 @@ class BPLocalGroupNotifierHelper{
         return $wpdb->get_var($query." WHERE {$where_sql}");
     
     }
+      
+//load text domain
+   //localization
+    function load_textdomain(){
+
+        $locale = apply_filters( 'group_activities_load_textdomain_get_locale', get_locale() );
+        
+      
+	// if load .mo file
+	if ( !empty( $locale ) ) {
+		$mofile_default = sprintf( '%slanguages/%s.mo', plugin_dir_path(__FILE__), $locale );
+              
+		$mofile = apply_filters( 'group_activities_load_textdomain_mofile', $mofile_default );
+		
+                if (is_readable( $mofile ) ) {
+                    // make sure file exists, and load it
+			load_textdomain( 'bp-group-activities-notifier', $mofile );
+		}
+	}
+}
 }
 
 
@@ -324,10 +346,10 @@ BPLocalGroupNotifierHelper::get_instance();
        $group_link = bp_get_group_permalink( $group ); 
 
        if ( (int) $total_items > 1 ) {
-                    $text = sprintf( __( '%1$d new activities in the group "%2$s"', 'bp-local-group-notifier' ), (int) $total_items, $group->name );
+                    $text = sprintf( __( '%1$d new activities in the group "%2$s"', 'bp-group-activities-notifier' ), (int) $total_items, $group->name );
 
                     if ( 'string' == $format ) {
-                        return '<a href="' . $group_link . '" title="' . __( 'New group Activities', 'bp-local-group-notifier' ) . '">' . $text . '</a>';
+                        return '<a href="' . $group_link . '" title="' . __( 'New group Activities', 'bp-group-activities-notifier' ) . '">' . $text . '</a>';
                     } else {
                         return array(
                             'link' => $group_link,

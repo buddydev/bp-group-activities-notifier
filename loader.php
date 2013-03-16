@@ -36,15 +36,9 @@ class BPLocalGroupNotifier extends BP_Component{
 		parent::setup_globals( $globals );
         
     }
-    
-    
-    
-    
+
 }
     
-
-
-
  function bp_setup_local_group_notifier() {
 	global $bp;
 
