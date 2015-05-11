@@ -1,28 +1,29 @@
 <?php
 //we need a dummy component for manipulating notifications
-class BPLocalGroupNotifier extends BP_Component{
+class BPLocalGroupNotifier extends BP_Component {
     
-    function __construct() {
-        global $bp;
+    public function __construct() {
+        
+		$bp = buddypress();
 		parent::start(
 			'localgroupnotifier',
 			__( 'Local Group Notifier', 'bp-local-group-notifier' ),
-            plugin_dir_path(__FILE__)
+            plugin_dir_path( __FILE__ )
 		);
-         $bp->active_components[$this->id] = 1;
+		
+        $bp->active_components[$this->id] = 1;
 	}
     
     
-    function includes(){
+    public function includes( $files = array() ) {
         
     }
     
-    function setup_globals() {
+    public function setup_globals( $global = array() ) {
+		
 		global $bp;
 
-		
-
-        $helper=BPLocalGroupNotifierHelper::get_instance();
+        $helper = BPLocalGroupNotifierHelper::get_instance();
 		// All globals for messaging component.
 		// Note that global_tables is included in this array.
 		$globals = array(
@@ -39,11 +40,11 @@ class BPLocalGroupNotifier extends BP_Component{
 
 }
     
- function bp_setup_local_group_notifier() {
-	global $bp;
+function bp_setup_local_group_notifier() {
+	
+	 $bp = buddypress();
 
 	$bp->localgroupnotifier = new BPLocalGroupNotifier();
 }
 add_action( 'bp_loaded', 'bp_setup_local_group_notifier' );
     
-?>
