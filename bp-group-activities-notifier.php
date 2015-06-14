@@ -73,19 +73,20 @@ class BPLocalGroupNotifierHelper {
         $group_id = $activity->item_id;
        
         //let us fetch all members data for the group except the banned users
-        $members_data = BP_Groups_Member::get_all_for_group( $group_id, false, false, false );//include admin/mod
+		
+        $members =  BP_Groups_Member::get_group_member_ids( $group_id );//include admin/mod
         
         //ok let us fetch the members list
-        $members = $members_data['members'];
+       
 
         //and we will add a notification for each user
-        foreach( (array)$members as $member ) {
+        foreach( (array)$members as $user_id ) {
 			
-            if( $member->user_id == $activity->user_id )
+            if( $user_id == $activity->user_id )
                  continue;//but not for the current logged user who performed this action
 
             //we need to make each notification unique, otherwise bp will group it
-             self::add_notification( $group_id, $member->user_id, 'localgroupnotifier', 'group_local_notification_' . $activity_id, $activity_id );
+             self::add_notification( $group_id, $user_id, 'localgroupnotifier', 'group_local_notification_' . $activity_id, $activity_id );
         }
 
 
@@ -209,13 +210,19 @@ class BPLocalGroupNotifierHelper {
             
             //this is the logged in user for whom we are trying to delete notification
             
-            $current_user = get_current_user_id();
+           
 
             foreach( (array) $activities as $activity ) {
                 //delete now
-
-                 BP_Core_Notification::delete_for_user_by_item_id( $current_user, $activity->item_id, 'localgroupnotifier', 'group_local_notification_' . $activity->id, $activity->id );
-
+				BP_Notifications_Notification::delete( array(
+					'user_id'			=> get_current_user_id(),
+					'item_id'			=> $activity->item_id,
+					'component_name'	=> 'localgroupnotifier',
+					'component_action'	=> 'group_local_notification_' . $activity->id,
+					'secondary_item_id'	=> $activity->id
+			
+			));
+                
             }
                 
         
