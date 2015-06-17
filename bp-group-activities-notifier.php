@@ -5,7 +5,7 @@
  * Plugin URI: http://buddydev.com/plugins/bp-group-activities-notifier/
  * Author: Brajesh Singh(BuddyDev)
  * Author URI: http://buddydev.com/members/sbrajesh/
- * Version: 1.0
+ * Version: 1.0.1
  * Description: Notifies on any action in the group to all group members. I have tested with group join, group post update, forum post/reply. Sould work with others too
  */
 
