@@ -69,8 +69,14 @@ class BPLocalGroupNotifierHelper {
 	        return;
         }
 
+
         //we found it, good! 
         $activity = new BP_Activity_Activity( $activity_id );
+
+	    if ( apply_filters( 'bp_local_group_notifier_skip_notification', false, $activity ) ) {
+		    return ;//do not notify
+	    }
+
         //ok this is infact the group id
         //I am not sure about 3rd party plugins, but bbpress, buddypress adds group activities like this
         $group_id = $activity->item_id;
