@@ -5,18 +5,18 @@
  * Plugin URI: http://buddydev.com/plugins/bp-group-activities-notifier/
  * Author: Brajesh Singh(BuddyDev)
  * Author URI: http://buddydev.com/members/sbrajesh/
- * Version: 1.0.1
+ * Version: 1.0.2
  * Description: Notifies on any action in the group to all group members. I have tested with group join, group post update, forum post/reply. Sould work with others too
  */
 
 //load the component
-add_action( 'bp_include', 'bp_local_group_notifier_load' );
 
 function bp_local_group_notifier_load() {
     //we need a dummy component
-    include_once plugin_dir_path( __FILE__ ) . 'loader.php';
+    require_once plugin_dir_path( __FILE__ ) . 'loader.php';
     
 }
+add_action( 'bp_include', 'bp_local_group_notifier_load' );
 
 class BPLocalGroupNotifierHelper {
     
@@ -37,9 +37,10 @@ class BPLocalGroupNotifierHelper {
     
     public static function get_instance() {
 		
-        if( ! isset( self::$instance ) )
-           self::$instance= new self();
-        
+        if ( ! isset( self::$instance ) ) {
+            self::$instance= new self();
+        }
+
         return self::$instance;
         
     }
@@ -57,15 +58,17 @@ class BPLocalGroupNotifierHelper {
 		$bp = buddypress();
  
         //first we need to check if this is a group activity
-        if( $params['component'] != $bp->groups->id )
-            return ;
+        if ( $params['component'] != $bp->groups->id ) {
+			return ;
+        }
 
         //now, find that activity
         $activity_id = bp_activity_get_activity_id( $params );
 
-        if( empty( $activity_id ) )
-            return;
-      
+        if ( empty( $activity_id ) ) {
+	        return;
+        }
+
         //we found it, good! 
         $activity = new BP_Activity_Activity( $activity_id );
         //ok this is infact the group id
@@ -80,10 +83,11 @@ class BPLocalGroupNotifierHelper {
        
 
         //and we will add a notification for each user
-        foreach( (array)$members as $user_id ) {
+        foreach ( (array)$members as $user_id ) {
 			
-            if( $user_id == $activity->user_id )
-                 continue;//but not for the current logged user who performed this action
+            if ( $user_id == $activity->user_id ) {
+                continue;//but not for the current logged user who performed this action
+            }
 
             //we need to make each notification unique, otherwise bp will group it
              self::add_notification( $group_id, $user_id, 'localgroupnotifier', 'group_local_notification_' . $activity_id, $activity_id );
@@ -98,11 +102,9 @@ class BPLocalGroupNotifierHelper {
      */
     public function delete_on_single_activity( $activity, $has_access ) {
         
-		if( ! is_user_logged_in() )
-            return;
-
-        if( !$has_access )
-           return ;
+		if ( ! is_user_logged_in() || ! $has_access  ) {
+			return;
+		}
 
 		//
 		BP_Notifications_Notification::delete( array(
@@ -117,7 +119,7 @@ class BPLocalGroupNotifierHelper {
     
     }
     /**
-     * Delet the notifications for New topic/ Topic replies if viewing the topic/topic replies
+     * Delete the notifications for New topic/ Topic replies if viewing the topic/topic replies
      * 
      * I am supporting bbpress 2.3+ plugin and not standalone bbpress which comes with BP 1.6
      * 
@@ -128,8 +130,9 @@ class BPLocalGroupNotifierHelper {
     
     public function delete_for_group_forums() {
 		
-        if( ! is_user_logged_in() || ! function_exists( 'bbpress' ) )//just make sure we are doing it for bbpress plugin
-            return;
+        if ( ! is_user_logged_in() || ! function_exists( 'bbpress' ) ) {//just make sure we are doing it for bbpress plugin
+	        return;
+        }
         
         //the identfication of notification for forum topic/reply is taxing operation
         //so, we need to make sure we don't abuse t
@@ -138,14 +141,15 @@ class BPLocalGroupNotifierHelper {
             //
             //bailout if user has no notification related to group
 
-            if( ! self::notification_exists(
+            if ( ! self::notification_exists(
                     array(
                         'item_id'	=>  bp_get_current_group_id(),//the group id
                         'component'	=> 'localgroupnotifier',
                         'user_id'	=>  get_current_user_id()
                      ))
-              )
-             return;
+              ) {
+	            return;
+            }
 
             //so, the current user has group notifications, now let us see if they belong to this topic
            
@@ -161,11 +165,13 @@ class BPLocalGroupNotifierHelper {
 			$topics     = get_posts( $topic_args );
 
 			// Does this topic exists?
-			if ( ! empty( $topics ) ) 
+			if ( ! empty( $topics ) ) {
 				$topic = $topics[0];
+			}
 
-			if( empty( $topic ) )
+			if ( empty( $topic ) ) {
 				return;//if not, let us return
+			}
 
 
 			//since we are here, the topic exists
@@ -190,9 +196,10 @@ class BPLocalGroupNotifierHelper {
             $replies = get_posts($default);
             
             //pluck the reply ids
-            if( ! empty( $replies ) )
-                $reply_ids = wp_list_pluck( $replies, 'ID' );
-            
+            if ( ! empty( $replies ) ) {
+	            $reply_ids = wp_list_pluck( $replies, 'ID' );
+            }
+
             //since reply/topic are just post type, let us include the ID of the topic too in the list
             
             $reply_ids[] = $topic->ID;//put topic id in the list too
@@ -205,14 +212,15 @@ class BPLocalGroupNotifierHelper {
             $activities = bp_activity_get_specific( array( 'activity_ids' => $activity_ids, 'show_hidden' => true, 'spam' => 'all', ) );
             
             //ok, we do have these activities
-            if( $activities['total'] > 0 )
-                $activities = $activities['activities'];
-            
+            if ( $activities['total'] > 0 ) {
+	            $activities = $activities['activities'];
+            }
+
             //this is the logged in user for whom we are trying to delete notification
             
            
 
-            foreach( (array) $activities as $activity ) {
+            foreach ( (array) $activities as $activity ) {
                 //delete now
 				BP_Notifications_Notification::delete( array(
 					'user_id'			=> get_current_user_id(),
@@ -240,24 +248,26 @@ class BPLocalGroupNotifierHelper {
      * @param type $user_id
      * @param type $component_name
      * @param type $component_action
-     * @param type $secondary_item_id
-     * @param type $date_notified
+     * @param int $secondary_item_id
+     * @param string|boolean $date_notified
      * @return boolean
      */
     public function add_notification( $item_id, $user_id, $component_name, $component_action, $secondary_item_id = 0, $date_notified = false ) {
 
-            if( self::notification_exists( array(
+            if ( self::notification_exists( array(
 				'item_id'			=> $item_id,
 				'component'			=> $component_name,
 				'action'			=> $component_action,
 				'secondary_item_id'	=> $secondary_item_id,
 				'user_id'			=> $user_id
 
-               ) ) )
-             return ;
-    
-            if ( empty( $date_notified ) )
-               $date_notified = bp_core_current_time();
+               ) ) ) {
+	            return ;
+            }
+
+            if ( empty( $date_notified ) ) {
+	            $date_notified = bp_core_current_time();
+            }
             //check if a notification already exists
 
             $notification                   = new BP_Notifications_Notification;
@@ -268,11 +278,13 @@ class BPLocalGroupNotifierHelper {
             $notification->date_notified    = $date_notified;
             $notification->is_new           = 1;
 
-            if ( !empty( $secondary_item_id ) )
-                $notification->secondary_item_id = $secondary_item_id;
+            if ( ! empty( $secondary_item_id ) ) {
+	            $notification->secondary_item_id = $secondary_item_id;
+            }
 
-            if ( $notification->save() )
-                return true;
+            if ( $notification->save() ) {
+	            return true;
+            }
 
             return false;
     }
@@ -282,7 +294,7 @@ class BPLocalGroupNotifierHelper {
      * 
      * @global type $bp
      * @global type $wpdb
-     * @param array $args
+     * @param mixed|array $args
      * @return type
      */
     public function notification_exists( $args= ''  ){
@@ -303,21 +315,25 @@ class BPLocalGroupNotifierHelper {
 
         $where = array();
 
-        if( $user_id )
-            $where[] = $wpdb->prepare( "user_id=%d", $user_id );
+        if ( $user_id ) {
+	        $where[] = $wpdb->prepare( "user_id=%d", $user_id );
+        }
 
-        if( $item_id )
-            $where[] = $wpdb->prepare( "item_id=%d", $item_id );
+        if ( $item_id ) {
+	        $where[] = $wpdb->prepare( "item_id=%d", $item_id );
+        }
 
-        if( $component )
-            $where[] = $wpdb->prepare( "component_name=%s", $component );
+        if ( $component ) {
+			$where[] = $wpdb->prepare( "component_name=%s", $component );
+        }
 
-        if( $action )
-            $where[] = $wpdb->prepare( "component_action=%s", $action );
-		
-        if( $secondary_item_id )
-            $where[] = $wpdb->prepare( "secondary_item_id=%d", $secondary_item_id );
+        if ( $action ) {
+			$where[] = $wpdb->prepare( "component_action=%s", $action );
+        }
 
+        if ( $secondary_item_id ) {
+			$where[] = $wpdb->prepare( "secondary_item_id=%d", $secondary_item_id );
+        }
 
         $where_sql = join( " AND ", $where );
        
@@ -360,7 +376,7 @@ BPLocalGroupNotifierHelper::get_instance();
 * @param type $item_id
 * @param type $secondary_item_id
 * @param type $total_items
-* @param type $format
+* @param string $format
 * @return type
 */
 
