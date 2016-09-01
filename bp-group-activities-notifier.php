@@ -1,37 +1,22 @@
 <?php
 
 /**
- * Plugin Name: BP Group Activities Notifier
+ * Plugin Name: BuddyPress Group Activities Notifier
  * Plugin URI: https://buddydev.com/plugins/bp-group-activities-notifier/
- * Author: Buddydev Team
+ * Author: BuddyDev Team
  * Author URI: https://buddydev.com
- * Version: 1.0.2
- * Description: Notifies on any action in the group to all group members. I have tested with group join, group post update, forum post/reply. Sould work with others too
+ * Version: 1.0.3
+ * Description: Notifies on any action in the group to all group members. I have tested with group join, group post update, forum post/reply. Should work with others too
  */
 
-//load the component
 
-function bp_local_group_notifier_load() {
-    //we need a dummy component
-    require_once plugin_dir_path( __FILE__ ) . 'loader.php';
-    
-}
-add_action( 'bp_include', 'bp_local_group_notifier_load' );
-
-class BPLocalGroupNotifierHelper {
+class BP_Local_Group_Notifier_Helper {
     
     private static $instance;
 
     private function __construct() {
-        //notify members on new activity
-        add_action( 'bp_activity_add', array( $this, 'notify_members' ) );
-        //delete notification when viewing single activity
-        add_action( 'bp_activity_screen_single_activity_permalink', array( $this, 'delete_on_single_activity' ), 10, 2 );
-        //sniff and delete notification for forum topic/replies
-        add_action( 'bp_init', array( $this, 'delete_for_group_forums' ), 20 );
-         //load text domain
-        add_action ( 'bp_loaded', array( $this, 'load_textdomain' ), 2 );
-
+    	//setup actions on bp_include
+    	add_action( 'bp_include', array( $this, 'setup' ) );
     }
     
     
@@ -44,17 +29,49 @@ class BPLocalGroupNotifierHelper {
         return self::$instance;
         
     }
-   /**
+
+	/**
+	 * Sets up actions only if both the groups/notifications components are enabled
+	 */
+    public function setup() {
+		//only load if the notifications/groups compnents are active
+    	if ( ! bp_is_active( 'groups' ) || ! bp_is_active( 'notifications' ) ) {
+    		return ;
+	    }
+
+	    $this->load();
+
+	    //notify members on new activity
+	    add_action( 'bp_activity_add', array( $this, 'notify_members' ) );
+	    //delete notification when viewing single activity
+	    add_action( 'bp_activity_screen_single_activity_permalink', array( $this, 'delete_on_single_activity' ), 10, 2 );
+	    //sniff and delete notification for forum topic/replies
+	    add_action( 'bp_init', array( $this, 'delete_for_group_forums' ), 20 );
+	    //load text domain
+	    add_action ( 'bp_init', array( $this, 'load_textdomain' ) );
+
+    }
+	/**
+	 * Load required dummy component
+	 */
+	public function load() {
+		require_once plugin_dir_path( __FILE__ ) . 'loader.php';
+	}
+
+	/**
     * Notifies Users of new Group activity
     * 
     * should we put an options in the notifications page of user to allow them opt out ?
     * 
-    * @global type $bp
-    * @param type $params
-    * @return type
+    * @param array $params
+    * @return null
     */
     public function notify_members( $params ) {
-       
+
+    	if ( ! bp_is_active( 'groups') ) {
+       	    return ;
+        }
+
 		$bp = buddypress();
  
         //first we need to check if this is a group activity
@@ -69,7 +86,6 @@ class BPLocalGroupNotifierHelper {
 	        return;
         }
 
-
         //we found it, good! 
         $activity = new BP_Activity_Activity( $activity_id );
 
@@ -77,17 +93,21 @@ class BPLocalGroupNotifierHelper {
 		    return ;//do not notify
 	    }
 
-        //ok this is infact the group id
+        //ok this is in fact the group id
         //I am not sure about 3rd party plugins, but bbpress, buddypress adds group activities like this
         $group_id = $activity->item_id;
        
         //let us fetch all members data for the group except the banned users
 		
         $members =  BP_Groups_Member::get_group_member_ids( $group_id );//include admin/mod
-        
-        //ok let us fetch the members list
-       
 
+	    do_action( 'bp_group_activities_notify_members', $members, array(
+		    'group_id'      => $group_id,
+		    'user_id'       => bp_loggedin_user_id(),
+		    'activity_id'   => $activity_id
+	    ) );
+
+        //ok let us fetch the members list
         //and we will add a notification for each user
         foreach ( (array)$members as $user_id ) {
 			
@@ -98,7 +118,6 @@ class BPLocalGroupNotifierHelper {
             //we need to make each notification unique, otherwise bp will group it
              self::add_notification( $group_id, $user_id, 'localgroupnotifier', 'group_local_notification_' . $activity_id, $activity_id );
         }
-
 
     }
 
@@ -121,8 +140,7 @@ class BPLocalGroupNotifierHelper {
 			'secondary_item_id'	=> $activity->id
 			
 		));
-       // BP_Core_Notification::delete_for_user_by_item_id( get_current_user_id(), $activity->item_id, 'localgroupnotifier', 'group_local_notification_'.$activity->id, $activity->id );
-    
+
     }
     /**
      * Delete the notifications for New topic/ Topic replies if viewing the topic/topic replies
@@ -130,8 +148,8 @@ class BPLocalGroupNotifierHelper {
      * I am supporting bbpress 2.3+ plugin and not standalone bbpress which comes with BP 1.6
      * 
      * 
-     * @global type $wpdb
-     * @return type
+     * @global wpdb $wpdb
+     * @return null
      */
     
     public function delete_for_group_forums() {
@@ -234,12 +252,10 @@ class BPLocalGroupNotifierHelper {
 					'component_name'	=> 'localgroupnotifier',
 					'component_action'	=> 'group_local_notification_' . $activity->id,
 					'secondary_item_id'	=> $activity->id
-			
-			));
+
+				));
                 
             }
-                
-        
     }
     
   }
@@ -250,64 +266,71 @@ class BPLocalGroupNotifierHelper {
      * I am not using bp_core_add_notification as the forum component was mis behaving and we were getting two notifications added for the same activity
      * It checks if there exists a notification for activity, if not, It adds that notification for user
      * 
-     * @param type $item_id
-     * @param type $user_id
-     * @param type $component_name
-     * @param type $component_action
+     * @param int $item_id
+     * @param int $user_id
+     * @param string $component_name
+     * @param string $component_action
      * @param int $secondary_item_id
      * @param string|boolean $date_notified
      * @return boolean
      */
     public function add_notification( $item_id, $user_id, $component_name, $component_action, $secondary_item_id = 0, $date_notified = false ) {
 
-            if ( self::notification_exists( array(
-				'item_id'			=> $item_id,
-				'component'			=> $component_name,
-				'action'			=> $component_action,
-				'secondary_item_id'	=> $secondary_item_id,
-				'user_id'			=> $user_id
+		//we will do better while refactoring plugin
+	    //for now, just do an action to allow hooking
 
-               ) ) ) {
-	            return ;
-            }
+	    $args = array(
+		    'item_id'           => $item_id,
+		    'component'         => $component_name,
+		    'action'            => $component_action,
+		    'secondary_item_id' => $secondary_item_id,
+		    'user_id'           => $user_id
+	    );
 
-            if ( empty( $date_notified ) ) {
-	            $date_notified = bp_core_current_time();
-            }
-            //check if a notification already exists
+	    do_action( 'bp_group_activity_notifier_new_activity', $args );
 
-            $notification                   = new BP_Notifications_Notification;
-            $notification->item_id          = $item_id;
-            $notification->user_id          = $user_id;
-            $notification->component_name   = $component_name;
-            $notification->component_action = $component_action;
-            $notification->date_notified    = $date_notified;
-            $notification->is_new           = 1;
+	    //why do we check for duplicate here?
+	    if ( self::notification_exists( $args ) ) {
+		    return;
+	    }
 
-            if ( ! empty( $secondary_item_id ) ) {
-	            $notification->secondary_item_id = $secondary_item_id;
-            }
+	    if ( empty( $date_notified ) ) {
+		    $date_notified = bp_core_current_time();
+	    }
+	    //check if a notification already exists
 
-            if ( $notification->save() ) {
-	            return true;
-            }
+	    $notification                   = new BP_Notifications_Notification;
+	    $notification->item_id          = $item_id;
+	    $notification->user_id          = $user_id;
+	    $notification->component_name   = $component_name;
+	    $notification->component_action = $component_action;
+	    $notification->date_notified    = $date_notified;
+	    $notification->is_new           = 1;
 
-            return false;
+	    if ( ! empty( $secondary_item_id ) ) {
+		    $notification->secondary_item_id = $secondary_item_id;
+	    }
+
+	    if ( $notification->save() ) {
+		    return true;
+	    }
+
+	    return false;
     }
 
     /**
      * Check if a notification exists
      * 
-     * @global type $bp
-     * @global type $wpdb
+     * @global wpdb $wpdb
      * @param mixed|array $args
-     * @return type
+     * @return boolean
      */
     public function notification_exists( $args= ''  ){
-        
-        global $bp,$wpdb;
-        
-        $args=  wp_parse_args( $args, array(
+
+        global $wpdb;
+        $bp =buddypress();
+
+        $args = wp_parse_args( $args, array(
                     'user_id'			=> false,
                     'item_id'			=> false,
                     'component'			=> false,
@@ -346,44 +369,31 @@ class BPLocalGroupNotifierHelper {
         return $wpdb->get_var( $query . " WHERE {$where_sql}" );
     
     }
-      
-//load text domain
-   //localization
-    public function load_textdomain() {
 
-        $locale = apply_filters( 'group_activities_load_textdomain_get_locale', get_locale() );
-        
-      
-	// if load .mo file
-	if ( ! empty( $locale ) ) {
-		$mofile_default = sprintf( '%slanguages/%s.mo', plugin_dir_path( __FILE__ ), $locale );
-              
-		$mofile = apply_filters( 'group_activities_load_textdomain_mofile', $mofile_default );
-		
-        if ( is_readable( $mofile ) ) {
-                    // make sure file exists, and load it
-			load_textdomain( 'bp-group-activities-notifier', $mofile );
-		}
+	/**
+	 * Load translation file
+	 */
+	public function load_textdomain() {
+		load_plugin_textdomain(  'bp-group-activities-notifier', false, dirname( plugin_basename( __FILE__ ) ) . '/languages' );
 	}
-}
 }
 
 
 
 //instantiate
-BPLocalGroupNotifierHelper::get_instance();
+BP_Local_Group_Notifier_Helper::get_instance();
 
     
 
 /**
 * Just formats the notification
 * 
-* @param type $action
-* @param type $item_id
-* @param type $secondary_item_id
-* @param type $total_items
+* @param string $action
+* @param int $item_id
+* @param int $secondary_item_id
+* @param int $total_items
 * @param string $format
-* @return type
+* @return string|array
 */
 
 function bp_local_group_notifier_format_notifications( $action, $item_id, $secondary_item_id, $total_items, $format = 'string' ) {
@@ -413,11 +423,8 @@ function bp_local_group_notifier_format_notifications( $action, $item_id, $secon
 		$notification_link = bp_activity_get_permalink( $activity->id, $activity );
 
 		if ( 'string' == $format ) {
-			
 			return '<a href="' . $notification_link . '" title="' .$text . '">' . $text . '</a>';
-			
 		} else {
-				
 			return array(
 				'link' => $notification_link,
 				'text' => $text

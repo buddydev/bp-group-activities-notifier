@@ -20,10 +20,7 @@ class BPLocalGroupNotifier extends BP_Component {
     }
     
     public function setup_globals( $global = array() ) {
-		
-		global $bp;
 
-        $helper = BPLocalGroupNotifierHelper::get_instance();
 		// All globals for messaging component.
 		// Note that global_tables is included in this array.
 		$globals = array(
