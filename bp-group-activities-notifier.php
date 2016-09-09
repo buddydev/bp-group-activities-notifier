@@ -115,7 +115,7 @@ class BP_Local_Group_Notifier_Helper {
      * Delete notification for user when he views single activity
      */
     public function delete_on_single_activity( $activity, $has_access ) {
-        
+
 		if ( ! is_user_logged_in() || ! $has_access  ) {
 			return;
 		}
@@ -127,125 +127,133 @@ class BP_Local_Group_Notifier_Helper {
 			'component_name'	=> 'localgroupnotifier',
 			'component_action'	=> 'group_local_notification_' . $activity->id,
 			'secondary_item_id'	=> $activity->id
-			
+
 		));
 
     }
     /**
      * Delete the notifications for New topic/ Topic replies if viewing the topic/topic replies
-     * 
+     *
      * I am supporting bbpress 2.3+ plugin and not standalone bbpress which comes with BP 1.6
-     * 
-     * 
+     *
+     *
      * @global wpdb $wpdb
      * @return null
      */
-    
+
     public function delete_for_group_forums() {
-		
-        if ( ! is_user_logged_in() || ! function_exists( 'bbpress' ) ) {//just make sure we are doing it for bbpress plugin
-	        return;
-        }
-        
-        //the identfication of notification for forum topic/reply is taxing operation
-        //so, we need to make sure we don't abuse t
-        if ( bp_is_single_item() && bp_is_groups_component() && bp_is_current_action( 'forum' ) && bp_is_action_variable('topic') ) {
-            //we are on single topic page
-            //
-            //bailout if user has no notification related to group
 
-            if ( ! self::notification_exists(
-                    array(
-                        'item_id'	=>  bp_get_current_group_id(),//the group id
-                        'component'	=> 'localgroupnotifier',
-                        'user_id'	=>  get_current_user_id()
-                     ))
-              ) {
-	            return;
-            }
+	    if ( ! is_user_logged_in() || ! function_exists( 'bbpress' ) ) {//just make sure we are doing it for bbpress plugin
+		    return;
+	    }
 
-            //so, the current user has group notifications, now let us see if they belong to this topic
-           
+	    //the identification of notification for forum topic/reply is taxing operation
+	    //so, we need to make sure we don't abuse it
+	    if ( bp_is_single_item() && bp_is_groups_component() && bp_is_current_action( 'forum' ) && bp_is_action_variable( 'topic' ) ) {
+		    //we are on single topic page
+		    //
+		    //bailout if user has no notification related to group
 
-			//Identify the topic
-			// Get topic data
-			$topic_slug = bp_action_variable( 1 );
-			
-			$post_status = array( bbp_get_closed_status_id(), bbp_get_public_status_id() );
-			
-			$topic_args = array( 'name' => $topic_slug, 'post_type' => bbp_get_topic_post_type(), 'post_status' => $post_status );
-			
-			$topics     = get_posts( $topic_args );
+		    if ( ! self::notification_exists(
+			    array(
+				    'item_id'   => bp_get_current_group_id(),//the group id
+				    'component' => 'localgroupnotifier',
+				    'user_id'   => get_current_user_id()
+			    ) )
+		    ) {
+			    return;
+		    }
 
-			// Does this topic exists?
-			if ( ! empty( $topics ) ) {
-				$topic = $topics[0];
-			}
-
-			if ( empty( $topic ) ) {
-				return;//if not, let us return
-			}
+		    //so, the current user has group notifications, now let us see if they belong to this topic
 
 
-			//since we are here, the topic exists
-			//let us find all the replies for this topic
-			// Default query args
-			$default = array(
-				'post_type'      => bbp_get_reply_post_type(), // Only replies
-				'post_parent'    => $topic->ID, // Of this topic
-				'posts_per_page' => -1, // all
-				'paged'          => false, 
-				'orderby'        => 'date',
-				'order'          => 'ASC' ,
-				'post_status'    =>'any'   
+		    //Identify the topic
+		    // Get topic data
+		    $topic_slug = bp_action_variable( 1 );
+
+		    $post_status = array( bbp_get_closed_status_id(), bbp_get_public_status_id() );
+
+		    $topic_args = array(
+			    'name'        => $topic_slug,
+			    'post_type'   => bbp_get_topic_post_type(),
+			    'post_status' => $post_status
+		    );
+
+		    $topics = get_posts( $topic_args );
+
+		    // Does this topic exists?
+		    if ( ! empty( $topics ) ) {
+			    $topic = $topics[0];
+		    }
+
+		    if ( empty( $topic ) ) {
+			    return;//if not, let us return
+		    }
 
 
-			);
+		    //since we are here, the topic exists
+		    //let us find all the replies for this topic
+		    // Default query args
+		    $default = array(
+			    'post_type'      => bbp_get_reply_post_type(), // Only replies
+			    'post_parent'    => $topic->ID, // Of this topic
+			    'posts_per_page' => - 1, // all
+			    'paged'          => false,
+			    'orderby'        => 'date',
+			    'order'          => 'ASC',
+			    'post_status'    => 'any'
 
-            global $wpdb;
-                
-            $reply_ids = array();
-            
-            $replies = get_posts($default);
-            
-            //pluck the reply ids
-            if ( ! empty( $replies ) ) {
-	            $reply_ids = wp_list_pluck( $replies, 'ID' );
-            }
 
-            //since reply/topic are just post type, let us include the ID of the topic too in the list
-            
-            $reply_ids[] = $topic->ID;//put topic id in the list too
-            $list = '(' . join( ',', $reply_ids ) . ')';
+		    );
 
-            //find the activity ids associated with these topic/replies
-            $activity_ids = $wpdb->get_col( $wpdb->prepare( "SELECT meta_value AS id FROM {$wpdb->postmeta} WHERE meta_key=%s AND post_id IN {$list}", '_bbp_activity_id' ) );
+		    global $wpdb;
 
-            //now, we will need to fetch the activities for these activity ids
-            $activities = bp_activity_get_specific( array( 'activity_ids' => $activity_ids, 'show_hidden' => true, 'spam' => 'all', ) );
-            
-            //ok, we do have these activities
-            if ( $activities['total'] > 0 ) {
-	            $activities = $activities['activities'];
-            }
+		    $reply_ids = array();
 
-            //this is the logged in user for whom we are trying to delete notification
+		    $replies = get_posts( $default );
 
-            foreach ( (array) $activities as $activity ) {
-                //delete now
-				BP_Notifications_Notification::delete( array(
-					'user_id'			=> get_current_user_id(),
-					'item_id'			=> $activity->item_id,
-					'component_name'	=> 'localgroupnotifier',
-					'component_action'	=> 'group_local_notification_' . $activity->id,
-					'secondary_item_id'	=> $activity->id
+		    //pluck the reply ids
+		    if ( ! empty( $replies ) ) {
+			    $reply_ids = wp_list_pluck( $replies, 'ID' );
+		    }
 
-				));
-                
-            }
+		    //since reply/topic are just post type, let us include the ID of the topic too in the list
+
+		    $reply_ids[] = $topic->ID;//put topic id in the list too
+		    $list        = '(' . join( ',', $reply_ids ) . ')';
+
+		    //find the activity ids associated with these topic/replies
+		    $activity_ids = $wpdb->get_col( $wpdb->prepare( "SELECT meta_value AS id FROM {$wpdb->postmeta} WHERE meta_key=%s AND post_id IN {$list}", '_bbp_activity_id' ) );
+
+		    //now, we will need to fetch the activities for these activity ids
+		    $activities = bp_activity_get_specific( array(
+			    'activity_ids' => $activity_ids,
+			    'show_hidden'  => true,
+			    'spam'         => 'all',
+		    ) );
+
+		    //ok, we do have these activities
+		    if ( $activities['total'] > 0 ) {
+			    $activities = $activities['activities'];
+		    }
+
+		    //this is the logged in user for whom we are trying to delete notification
+
+		    foreach ( (array) $activities as $activity ) {
+			    //delete now
+			    BP_Notifications_Notification::delete( array(
+				    'user_id'           => get_current_user_id(),
+				    'item_id'           => $activity->item_id,
+				    'component_name'    => 'localgroupnotifier',
+				    'component_action'  => 'group_local_notification_' . $activity->id,
+				    'secondary_item_id' => $activity->id
+
+			    ) );
+
+		    }
+	    }
+
     }
-    
-  }
 
 	/**
 	 * Add notifications in bulk in one query
@@ -262,6 +270,7 @@ class BP_Local_Group_Notifier_Helper {
 		$secondary_item_id = $activity->id ;
 		$date_notified = bp_core_current_time();
 		$is_new = 1;
+
 		$table = buddypress()->notifications->table_name;
 
 		//Chunk members into 200 per list and do a bulk insert for each of this chunk
@@ -294,7 +303,6 @@ class BP_Local_Group_Notifier_Helper {
 				return ;// It was a single membr group
 			}
 
-
 			$list = join(',', $sql);
 
 			$sql_insert_query = "INSERT INTO {$table} (user_id, item_id, secondary_item_id, component_name, component_action, date_notified,  is_new) values {$list}";
@@ -313,51 +321,51 @@ class BP_Local_Group_Notifier_Helper {
      * @param mixed|array $args
      * @return boolean
      */
-    public function notification_exists( $args= ''  ){
+    public function notification_exists( $args = ''  ) {
 
-        global $wpdb;
-        $bp =buddypress();
+	    global $wpdb;
 
-        $args = wp_parse_args( $args, array(
-                    'user_id'			=> false,
-                    'item_id'			=> false,
-                    'component'			=> false,
-                    'action'			=> false,
-                    'secondary_item_id'	=> false
-                ));
-        
-        extract( $args );
+	    $args = wp_parse_args( $args, array(
+		    'user_id'           => false,
+		    'item_id'           => false,
+		    'component'         => false,
+		    'action'            => false,
+		    'secondary_item_id' => false
+	    ) );
 
-        $query = "SELECT id FROM {$bp->notifications->table_name} ";
+	    extract( $args );
 
-        $where = array();
+	    $table = buddypress()->notifications->table_name;;
 
-        if ( $user_id ) {
-	        $where[] = $wpdb->prepare( "user_id=%d", $user_id );
-        }
+	    $query = "SELECT id FROM {$table} ";
 
-        if ( $item_id ) {
-	        $where[] = $wpdb->prepare( "item_id=%d", $item_id );
-        }
+	    $where = array();
 
-        if ( $component ) {
-			$where[] = $wpdb->prepare( "component_name=%s", $component );
-        }
+	    if ( $user_id ) {
+		    $where[] = $wpdb->prepare( "user_id=%d", $user_id );
+	    }
 
-        if ( $action ) {
-			$where[] = $wpdb->prepare( "component_action=%s", $action );
-        }
+	    if ( $item_id ) {
+		    $where[] = $wpdb->prepare( "item_id=%d", $item_id );
+	    }
 
-        if ( $secondary_item_id ) {
-			$where[] = $wpdb->prepare( "secondary_item_id=%d", $secondary_item_id );
-        }
+	    if ( $component ) {
+		    $where[] = $wpdb->prepare( "component_name=%s", $component );
+	    }
 
-        $where_sql = join( " AND ", $where );
-       
-        return $wpdb->get_var( $query . " WHERE {$where_sql}" );
+	    if ( $action ) {
+		    $where[] = $wpdb->prepare( "component_action=%s", $action );
+	    }
+
+	    if ( $secondary_item_id ) {
+		    $where[] = $wpdb->prepare( "secondary_item_id=%d", $secondary_item_id );
+	    }
+
+	    $where_sql = join( " AND ", $where );
+
+	    return $wpdb->get_var( $query . " WHERE {$where_sql}" );
     
     }
-
 
 	/**
 	 * Load translation file
