@@ -227,8 +227,6 @@ class BP_Local_Group_Notifier_Helper {
             }
 
             //this is the logged in user for whom we are trying to delete notification
-            
-           
 
             foreach ( (array) $activities as $activity ) {
                 //delete now
@@ -245,60 +243,6 @@ class BP_Local_Group_Notifier_Helper {
     }
     
   }
-    
-    /**
-     * Adds a notification to the user
-     * 
-     * I am not using bp_core_add_notification as the forum component was mis behaving and we were getting two notifications added for the same activity
-     * It checks if there exists a notification for activity, if not, It adds that notification for user
-     * 
-     * @param int $item_id
-     * @param int $user_id
-     * @param string $component_name
-     * @param string $component_action
-     * @param int $secondary_item_id
-     * @param string|boolean $date_notified
-     * @return boolean
-     */
-    public function add_notification( $item_id, $user_id, $component_name, $component_action, $secondary_item_id = 0, $date_notified = false ) {
-
-		//we will do better while refactoring plugin
-	    //for now, just do an action to allow hooking
-
-	    $args = array(
-		    'item_id'           => $item_id,
-		    'component'         => $component_name,
-		    'action'            => $component_action,
-		    'secondary_item_id' => $secondary_item_id,
-		    'user_id'           => $user_id
-	    );
-
-	    do_action( 'bp_group_activity_notifier_new_activity', $args );
-
-
-	    if ( empty( $date_notified ) ) {
-		    $date_notified = bp_core_current_time();
-	    }
-	    //check if a notification already exists
-
-	    $notification                   = new BP_Notifications_Notification;
-	    $notification->item_id          = $item_id;
-	    $notification->user_id          = $user_id;
-	    $notification->component_name   = $component_name;
-	    $notification->component_action = $component_action;
-	    $notification->date_notified    = $date_notified;
-	    $notification->is_new           = 1;
-
-	    if ( ! empty( $secondary_item_id ) ) {
-		    $notification->secondary_item_id = $secondary_item_id;
-	    }
-
-	    if ( $notification->save() ) {
-		    return true;
-	    }
-
-	    return false;
-    }
 
 	/**
 	 * Add notifications in bulk in one query
