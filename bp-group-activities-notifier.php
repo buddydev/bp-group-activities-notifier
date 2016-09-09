@@ -290,10 +290,6 @@ class BP_Local_Group_Notifier_Helper {
 
 	    do_action( 'bp_group_activity_notifier_new_activity', $args );
 
-	    //why do we check for duplicate here?
-	    if ( self::notification_exists( $args ) ) {
-		    return;
-	    }
 
 	    if ( empty( $date_notified ) ) {
 		    $date_notified = bp_core_current_time();
@@ -370,6 +366,7 @@ class BP_Local_Group_Notifier_Helper {
         return $wpdb->get_var( $query . " WHERE {$where_sql}" );
     
     }
+
 
 	/**
 	 * Load translation file
