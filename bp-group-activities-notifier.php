@@ -18,8 +18,7 @@ class BP_Local_Group_Notifier_Helper {
     	//setup actions on bp_include
     	add_action( 'bp_include', array( $this, 'setup' ) );
     }
-    
-    
+
     public static function get_instance() {
 		
         if ( ! isset( self::$instance ) ) {
@@ -27,7 +26,6 @@ class BP_Local_Group_Notifier_Helper {
         }
 
         return self::$instance;
-        
     }
 
 	/**
@@ -68,10 +66,6 @@ class BP_Local_Group_Notifier_Helper {
     */
     public function notify_members( $params ) {
 
-    	if ( ! bp_is_active( 'groups') ) {
-       	    return ;
-        }
-
 		$bp = buddypress();
  
         //first we need to check if this is a group activity
@@ -101,17 +95,8 @@ class BP_Local_Group_Notifier_Helper {
 		
         $members =  BP_Groups_Member::get_group_member_ids( $group_id );//include admin/mod
 
-
-        //and we will add a notification for each user
-        foreach ( (array)$members as $user_id ) {
-			
-            if ( $user_id == $activity->user_id ) {
-                continue;//but not for the current logged user who performed this action
-            }
-
-            //we need to make each notification unique, otherwise bp will group it
-             self::add_notification( $group_id, $user_id, 'localgroupnotifier', 'group_local_notification_' . $activity_id, $activity_id );
-        }
+		//Let us add the local notification in bulk
+	    self::add_bulk_notifications( $members, $activity );
 
 	    do_action( 'bp_group_activities_notify_members', $members, array(
 		    'group_id'      => $group_id,
@@ -314,6 +299,65 @@ class BP_Local_Group_Notifier_Helper {
 
 	    return false;
     }
+
+	/**
+	 * Add notifications in bulk in one query
+	 *
+	 * @param $members
+	 * @param $activity
+	 */
+	public static function add_bulk_notifications( $members, $activity ) {
+		global $wpdb;
+
+		$item_id = $activity->item_id;
+		$component_name = 'localgroupnotifier';
+		$component_action = 'group_local_notification_' . $activity->id;
+		$secondary_item_id = $activity->id ;
+		$date_notified = bp_core_current_time();
+		$is_new = 1;
+		$table = buddypress()->notifications->table_name;
+
+		//Chunk members into 200 per list and do a bulk insert for each of this chunk
+		//This way, It will save us huge number of queries
+		foreach ( array_chunk($members, 200 ) as $members_list ) {
+
+			$sql = array();
+
+
+			foreach ( $members_list as $user_id ) {
+
+				if ( $user_id == $activity->user_id ) {
+					continue;//don't add for the user who posted this activity
+				}
+
+				$sql[] = $wpdb->prepare(
+					"(%d, %d, %d, %s, %s, %s, %d )",
+					$user_id,
+					$item_id,
+					$secondary_item_id,
+					$component_name,
+					$component_action,
+					$date_notified,
+					$is_new
+				);
+			}
+
+
+			if ( empty( $sql ) ) {
+				return ;// It was a single membr group
+			}
+
+
+			$list = join(',', $sql);
+
+			$sql_insert_query = "INSERT INTO {$table} (user_id, item_id, secondary_item_id, component_name, component_action, date_notified,  is_new) values {$list}";
+
+			//insert
+			$wpdb->query( $sql_insert_query );
+
+		}
+
+	}
 
     /**
      * Check if a notification exists
