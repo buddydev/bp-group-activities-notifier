@@ -101,13 +101,7 @@ class BP_Local_Group_Notifier_Helper {
 		
         $members =  BP_Groups_Member::get_group_member_ids( $group_id );//include admin/mod
 
-	    do_action( 'bp_group_activities_notify_members', $members, array(
-		    'group_id'      => $group_id,
-		    'user_id'       => bp_loggedin_user_id(),
-		    'activity_id'   => $activity_id
-	    ) );
 
-        //ok let us fetch the members list
         //and we will add a notification for each user
         foreach ( (array)$members as $user_id ) {
 			
@@ -118,6 +112,13 @@ class BP_Local_Group_Notifier_Helper {
             //we need to make each notification unique, otherwise bp will group it
              self::add_notification( $group_id, $user_id, 'localgroupnotifier', 'group_local_notification_' . $activity_id, $activity_id );
         }
+
+	    do_action( 'bp_group_activities_notify_members', $members, array(
+		    'group_id'      => $group_id,
+		    'user_id'       => bp_loggedin_user_id(),
+		    'activity_id'   => $activity_id
+	    ) );
+
 
     }
 
