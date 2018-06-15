@@ -1,0 +1,10 @@
+{
+    "name": "sbrajesh/bp-group-activities-notifier",
+    "description": "Add a local notification for user when any activity happens in his/her group.",
+    "type": "wordpress-plugin",
+    "keywords": ["wordpress", "plugin", "buddypress"],
+    "homepage": "https://buddydev.com/plugins/bp-group-activities-notifier/",
+    "require": {
+        "composer/installers": "v1.5.0"
+    }
+}
