@@ -1,17 +1,18 @@
 <?php
-
+// Do not allow direct access over web.
+defined( 'ABSPATH' ) || exit;
 
 /**
  * Just formats the notification
  *
- * @param string $action
- * @param int $item_id
- * @param int $secondary_item_id
- * @param int $total_items
- * @param string $format
+ * @param string $action action.
+ * @param int    $item_id item id(group id).
+ * @param int    $secondary_item_id activity id.
+ * @param int    $total_items total items.
+ * @param string $format response format.
+ *
  * @return string|array
  */
-
 function bp_local_group_notifier_format_notifications( $action, $item_id, $secondary_item_id, $total_items, $format = 'string' ) {
 
 	$group_id = $item_id;
@@ -27,23 +28,30 @@ function bp_local_group_notifier_format_notifications( $action, $item_id, $secon
 		} else {
 			return array(
 				'link' => $group_link,
-				'text' => $text
+				'text' => $text,
 			);
 		}
 	} else {
 
-		$activity= new BP_Activity_Activity($secondary_item_id);
+		$activity = new BP_Activity_Activity( $secondary_item_id );
 
 		$text = strip_tags( $activity->action );//here is the hack, think about it :)
 
-		$notification_link = bp_activity_get_permalink( $activity->id, $activity );
+		$notification_link = apply_filters(
+			'bp_local_group_notifier_notification_activity_permalink',
+			bp_activity_get_permalink( $activity->id, $activity ),
+			$item_id,
+			$secondary_item_id,
+			$total_items,
+			$format
+		);
 
 		if ( 'string' == $format ) {
-			return '<a href="' . $notification_link . '" title="' .$text . '">' . $text . '</a>';
+			return '<a href="' . $notification_link . '" title="' . $text . '">' . $text . '</a>';
 		} else {
 			return array(
 				'link' => $notification_link,
-				'text' => $text
+				'text' => $text,
 			);
 		}
 	}
