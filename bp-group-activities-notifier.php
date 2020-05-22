@@ -58,6 +58,7 @@ class BP_Local_Group_Notifier_Helper {
 
 		// notify members on new activity.
 		add_action( 'bp_activity_add', array( $this, 'notify_members' ) );
+		add_action( 'bp_before_activity_delete', array( $this, 'clear_members_notifications' ) );
 		// delete notification when viewing single activity.
 		add_action(
 			'bp_activity_screen_single_activity_permalink',
@@ -136,6 +137,23 @@ class BP_Local_Group_Notifier_Helper {
 				'activity_id' => $activity_id,
 			)
 		);
+	}
+
+	/**
+	 * Clears notification on activity delete.
+	 *
+	 * @param array $args args.
+	 */
+	public function clear_members_notifications( $args ) {
+		if ( empty( $args['id'] ) ) {
+			return;
+		}
+		$activity = new BP_Activity_Activity( $args['id'] );
+		if ( ! $activity->id || $activity->component != 'groups' ) {
+			return;
+		}
+
+		self::delete_bulk_notifications( $activity );
 	}
 
 	/**
@@ -333,6 +351,24 @@ class BP_Local_Group_Notifier_Helper {
 
 		}
 
+	}
+
+	/**
+	 * Delete notifications in bulk on activity delete.
+	 *
+	 * @param BP_Activity_Activity $activity activity object.
+	 */
+	private function delete_bulk_notifications( $activity ) {
+		global $wpdb;
+
+		$item_id           = $activity->item_id;
+		$component_name    = 'localgroupnotifier';
+		$component_action  = 'group_local_notification_' . $activity->id;
+		$secondary_item_id = $activity->id;
+
+		$table = buddypress()->notifications->table_name;
+
+		$wpdb->query( $wpdb->prepare( "DELETE FROM {$table} WHERE item_id=%d AND secondary_item_id=%d AND component_name=%s AND component_action=%s", $item_id, $secondary_item_id, $component_name, $component_action ) );
 	}
 
 	/**
