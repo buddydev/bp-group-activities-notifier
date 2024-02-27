@@ -2,7 +2,6 @@
 // Do not allow direct access over web.
 defined( 'ABSPATH' ) || exit;
 
-
 /**
  * Dummy Component.
  *
