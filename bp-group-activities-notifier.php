@@ -57,7 +57,7 @@ class BP_Local_Group_Notifier_Helper {
 		$this->load();
 
 		// notify members on new activity.
-		add_action( 'bp_activity_add', array( $this, 'notify_members' ) );
+		add_action( 'bp_activity_add', array( $this, 'notify_members' ), 10, 2 );
 		add_action( 'bp_before_activity_delete', array( $this, 'clear_members_notifications' ) );
 		// delete notification when viewing single activity.
 		add_action(
@@ -95,7 +95,7 @@ class BP_Local_Group_Notifier_Helper {
 	 *
 	 * @return null
 	 */
-	public function notify_members( $params ) {
+	public function notify_members( $params, $activity_id ) {
 
 		$bp = buddypress();
 
@@ -103,9 +103,6 @@ class BP_Local_Group_Notifier_Helper {
 		if ( $params['component'] != $bp->groups->id ) {
 			return;
 		}
-
-		// now, find that activity.
-		$activity_id = bp_activity_get_activity_id( $params );
 
 		if ( empty( $activity_id ) ) {
 			return;
